@@ -146,3 +146,29 @@ export function agoText(day: string | undefined): string {
   if (n === 1) return "ayer";
   return `hace ${n} días`;
 }
+
+export function localTime(d: Date): string {
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
+
+export function toIso(day: string, time: string): string {
+  const [y, m, d] = day.split("-").map(Number);
+  const [hh, mm] = time.split(":").map(Number);
+  return new Date(y, m - 1, d, hh || 0, mm || 0).toISOString();
+}
+
+export function parseDose(text: string): number | null {
+  const n = text.trim() ? Number(text.replace(",", ".")) : NaN;
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+export function formatDose(n: number | null): string {
+  return n === null ? "" : String(n).replace(".", ",");
+}
+
+// Última dosis ingresada (por fecha de registro), para prellenar el formulario.
+export function lastDose(injs: Injection[]): string {
+  const withDose = injs.filter((i) => i.dose_mg !== null);
+  withDose.sort((a, b) => b.injected_at.localeCompare(a.injected_at));
+  return formatDose(withDose[0]?.dose_mg ?? null);
+}

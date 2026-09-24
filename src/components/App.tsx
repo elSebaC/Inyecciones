@@ -176,6 +176,10 @@ function Main({ store, who, demo, onSignOut }: { store: Store; who: string; demo
     await store.addInjection(i);
     await reload();
   };
+  const update = async (id: string, patch: Partial<NewInjection>) => {
+    await store.updateInjection(id, patch);
+    await reload();
+  };
   const del = async (id: string) => {
     await store.deleteInjection(id);
     await reload();
@@ -236,7 +240,7 @@ function Main({ store, who, demo, onSignOut }: { store: Store; who: string; demo
 
       <main className="flex-1 px-4 pb-28 pt-2">
         {tab === "registrar" && <RegisterTab childId={child.id} injections={injections} onSave={add} />}
-        {tab === "historial" && <HistoryTab injections={injections} startDate={child.start_date} onDelete={del} />}
+        {tab === "historial" && <HistoryTab injections={injections} startDate={child.start_date} onDelete={del} onUpdate={update} />}
         {tab === "mapa" && <HeatTab injections={injections} />}
         {tab === "stats" && <StatsTab injections={injections} startDate={child.start_date} />}
       </main>

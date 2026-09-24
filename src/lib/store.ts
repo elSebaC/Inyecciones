@@ -6,6 +6,7 @@ export interface Store {
   createChild(c: Omit<Child, "id">): Promise<Child>;
   listInjections(childId: string): Promise<Injection[]>;
   addInjection(i: NewInjection): Promise<Injection>;
+  updateInjection(id: string, patch: Partial<NewInjection>): Promise<void>;
   deleteInjection(id: string): Promise<void>;
 }
 
@@ -44,6 +45,10 @@ export const supabaseStore: Store = {
       .single();
     if (error) throw error;
     return data;
+  },
+  async updateInjection(id, patch) {
+    const { error } = await getSupabase().from("injections").update(patch).eq("id", id);
+    if (error) throw error;
   },
   async deleteInjection(id) {
     const { error } = await getSupabase().from("injections").delete().eq("id", id);
@@ -90,6 +95,11 @@ export const demoStore: Store = {
     d.injections.push(inj);
     save(d);
     return inj;
+  },
+  async updateInjection(id, patch) {
+    const d = load();
+    d.injections = d.injections.map((i) => (i.id === id ? { ...i, ...patch } : i));
+    save(d);
   },
   async deleteInjection(id) {
     const d = load();

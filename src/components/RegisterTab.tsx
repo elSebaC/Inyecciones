@@ -3,13 +3,12 @@
 import { useMemo, useState } from "react";
 import BodyMap from "./BodyMap";
 import { Card } from "./ui";
-import { agoText, daysBetween, lastUsed, localDay, suggestZone } from "@/lib/stats";
+import { agoText, daysBetween, lastDose, lastUsed, localDay, localTime, parseDose, suggestZone, toIso } from "@/lib/stats";
 import type { Injection, NewInjection } from "@/lib/types";
 import { ZONES, zoneById, type ZoneId } from "@/lib/zones";
 
 function nowTime() {
-  const d = new Date();
-  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  return localTime(new Date());
 }
 
 export default function RegisterTab({
@@ -25,12 +24,14 @@ export default function RegisterTab({
   const [zone, setZone] = useState<ZoneId | null>(null);
   const [day, setDay] = useState(today);
   const [time, setTime] = useState(nowTime);
-  const [dose, setDose] = useState("");
+  const [doseInput, setDose] = useState<string | null>(null);
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
 
   const last = useMemo(() => lastUsed(injections), [injections]);
+  // Mientras no se escriba nada, la dosis viene prellenada con la última registrada.
+  const dose = doseInput ?? lastDose(injections);
   const suggested = useMemo(() => suggestZone(injections), [injections]);
   const recent = useMemo(
     () => new Set(ZONES.filter((z) => last[z.id] && daysBetween(last[z.id]!, today) <= 2).map((z) => z.id)),
@@ -45,19 +46,17 @@ export default function RegisterTab({
     setSaving(true);
     setMsg(null);
     try {
-      const [y, m, d] = day.split("-").map(Number);
-      const [hh, mm] = time.split(":").map(Number);
-      const doseNum = dose.trim() ? Number(dose.replace(",", ".")) : null;
       await onSave({
         child_id: childId,
         zone,
-        injected_at: new Date(y, m - 1, d, hh || 0, mm || 0).toISOString(),
-        dose_mg: doseNum && doseNum > 0 ? doseNum : null,
+        injected_at: toIso(day, time),
+        dose_mg: parseDose(dose),
         notes: notes.trim() || null,
       });
       setMsg(`Guardado: ${zoneById(zone)!.label}`);
       setZone(null);
       setNotes("");
+      setDose(null);
     } catch (e) {
       setMsg(`No se pudo guardar: ${(e as Error).message}`);
     } finally {
@@ -99,20 +98,6 @@ export default function RegisterTab({
         <p className="-mt-1 text-center text-xs text-stone-400">
           ✕ usada en los últimos 2 días · borde verde: sugerida
         </p>
-        <div className="mt-3 grid grid-cols-2 gap-2">
-          {ZONES.map((z) => (
-            <button
-              key={z.id}
-              onClick={() => setZone(z.id)}
-              className={`rounded-xl px-3 py-2 text-left text-sm ring-1 transition-transform active:scale-95 ${
-                zone === z.id ? "bg-[#2f7fc1] text-white ring-[#2f7fc1]" : "bg-stone-50 text-stone-700 ring-stone-200"
-              }`}
-            >
-              <div className="font-medium leading-tight">{z.label}</div>
-              <div className={`text-xs ${zone === z.id ? "text-blue-100" : "text-stone-400"}`}>{agoText(last[z.id])}</div>
-            </button>
-          ))}
-        </div>
       </Card>
 
       <Card className="space-y-3">
