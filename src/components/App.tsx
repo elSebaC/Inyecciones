@@ -2,23 +2,27 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
+import ChildForm from "./ChildForm";
 import HeatTab from "./HeatTab";
+import MeasurementsTab from "./MeasurementsTab";
 import HistoryTab from "./HistoryTab";
 import RegisterTab from "./RegisterTab";
 import StatsTab from "./StatsTab";
 import { Card } from "./ui";
 import { clearDemo, demoStore, supabaseStore, type Store } from "@/lib/store";
 import { getSupabase, supabaseConfigured } from "@/lib/supabase";
+import { ageText } from "@/lib/stats";
 import type { Child, Injection, NewInjection } from "@/lib/types";
 
 type Mode = { kind: "loading" } | { kind: "out" } | { kind: "in"; session: Session } | { kind: "demo" };
-type Tab = "registrar" | "historial" | "mapa" | "stats";
+type Tab = "registrar" | "historial" | "mapa" | "stats" | "medidas";
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: "registrar", label: "Registrar", icon: "M12 5v14M5 12h14" },
   { id: "historial", label: "Historial", icon: "M4 6h16M4 12h16M4 18h10" },
   { id: "mapa", label: "Mapa", icon: "M12 3a3 3 0 1 1 0 6 3 3 0 0 1 0-6zM7 21l1-8-3-3h14l-3 3 1 8" },
   { id: "stats", label: "Estadísticas", icon: "M5 20V10M12 20V4M19 20v-7" },
+  { id: "medidas", label: "Medidas", icon: "M7 3v18M7 7h3M7 11h5M7 15h3M7 19h5M17 4l-2 4h4l-2-4zM17 8v12" },
 ];
 
 const DEMO_FLAG = "app-vacunas-demo-mode";
@@ -129,6 +133,7 @@ function Main({ store, who, demo, onSignOut }: { store: Store; who: string; demo
   const [injections, setInjections] = useState<Injection[]>([]);
   const [tab, setTab] = useState<Tab>("registrar");
   const [error, setError] = useState<string | null>(null);
+  const [editingChild, setEditingChild] = useState(false);
 
   useEffect(() => {
     store
@@ -163,13 +168,22 @@ function Main({ store, who, demo, onSignOut }: { store: Store; who: string; demo
   if (!children) return <Splash />;
   if (!child)
     return (
-      <NewChild
-        onCreate={async (c) => {
-          const created = await store.createChild(c);
-          setChildren([...children, created]);
-          setChildId(created.id);
-        }}
-      />
+      <div className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center p-6">
+        <Card className="space-y-4">
+          <div>
+            <h1 className="text-xl font-bold text-stone-800">¿A quién le registramos?</h1>
+            <p className="text-sm text-stone-500">Como en la ficha de la libreta.</p>
+          </div>
+          <ChildForm
+            submitLabel="Continuar"
+            onSubmit={async (c) => {
+              const created = await store.createChild(c);
+              setChildren([...children, created]);
+              setChildId(created.id);
+            }}
+          />
+        </Card>
+      </div>
     );
 
   const add = async (i: NewInjection) => {
@@ -202,13 +216,25 @@ function Main({ store, who, demo, onSignOut }: { store: Store; who: string; demo
           ) : (
             <h1 className="truncate text-lg font-bold text-stone-800">{child.name}</h1>
           )}
-          <div className="truncate text-xs text-stone-400">{who}</div>
+          <div className="truncate text-xs text-stone-500">
+            {child.birth_date ? ageText(child.birth_date) : who}
+          </div>
         </div>
         <details className="relative">
           <summary className="list-none rounded-full p-2 text-stone-500 hover:bg-stone-100" aria-label="Menú">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2" /><circle cx="12" cy="12" r="2" /><circle cx="12" cy="19" r="2" /></svg>
           </summary>
-          <div className="absolute right-0 mt-1 w-56 rounded-xl bg-white p-1 text-sm shadow-lg ring-1 ring-black/10">
+          <div
+            className="absolute right-0 mt-1 w-56 rounded-xl bg-white p-1 text-sm shadow-lg ring-1 ring-black/10"
+            onClick={(e) => e.currentTarget.closest("details")?.removeAttribute("open")}
+          >
+            <div className="truncate px-3 py-2 text-xs text-stone-400">{who}</div>
+            <button
+              className="w-full rounded-lg px-3 py-2 text-left hover:bg-stone-50"
+              onClick={() => setEditingChild(true)}
+            >
+              Datos del paciente
+            </button>
             <button
               className="w-full rounded-lg px-3 py-2 text-left hover:bg-stone-50"
               onClick={() => {
@@ -243,7 +269,31 @@ function Main({ store, who, demo, onSignOut }: { store: Store; who: string; demo
         {tab === "historial" && <HistoryTab injections={injections} startDate={child.start_date} onDelete={del} onUpdate={update} />}
         {tab === "mapa" && <HeatTab injections={injections} />}
         {tab === "stats" && <StatsTab injections={injections} startDate={child.start_date} />}
+        {tab === "medidas" && <MeasurementsTab store={store} child={child} />}
       </main>
+
+      {editingChild && (
+        <div className="fixed inset-0 z-30 flex items-end justify-center bg-black/40" onClick={() => setEditingChild(false)}>
+          <div
+            role="dialog"
+            aria-label="Datos del paciente"
+            className="w-full max-w-md rounded-t-3xl bg-white p-4 pb-[max(env(safe-area-inset-bottom),16px)]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="mb-3 text-lg font-bold text-stone-800">Datos del paciente</h2>
+            <ChildForm
+              initial={child}
+              submitLabel="Guardar"
+              onCancel={() => setEditingChild(false)}
+              onSubmit={async (patch) => {
+                await store.updateChild(child.id, patch);
+                setChildren(children.map((c) => (c.id === child.id ? { ...c, ...patch } : c)));
+                setEditingChild(false);
+              }}
+            />
+          </div>
+        </div>
+      )}
 
       <nav className="fixed inset-x-0 bottom-0 z-10 border-t border-stone-200 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur">
         <div className="mx-auto flex max-w-md">
@@ -267,42 +317,3 @@ function Main({ store, who, demo, onSignOut }: { store: Store; who: string; demo
   );
 }
 
-function NewChild({ onCreate }: { onCreate: (c: Omit<Child, "id">) => Promise<void> }) {
-  const [name, setName] = useState("");
-  const [start, setStart] = useState("");
-  const [busy, setBusy] = useState(false);
-  return (
-    <div className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center p-6">
-      <Card className="space-y-4">
-        <div>
-          <h1 className="text-xl font-bold text-stone-800">¿A quién le registramos?</h1>
-          <p className="text-sm text-stone-500">Como en la ficha de la libreta.</p>
-        </div>
-        <label className="block text-sm text-stone-600">
-          Nombre
-          <input value={name} onChange={(e) => setName(e.target.value)} maxLength={80}
-            className="mt-1 w-full rounded-lg border border-stone-200 px-3 py-2 text-base" />
-        </label>
-        <label className="block text-sm text-stone-600">
-          Fecha de inicio del tratamiento
-          <input type="date" value={start} onChange={(e) => setStart(e.target.value)}
-            className="mt-1 w-full rounded-lg border border-stone-200 px-3 py-2 text-base" />
-        </label>
-        <button
-          disabled={!name.trim() || busy}
-          onClick={async () => {
-            setBusy(true);
-            try {
-              await onCreate({ name: name.trim(), start_date: start || null });
-            } finally {
-              setBusy(false);
-            }
-          }}
-          className="w-full rounded-2xl bg-[#c9502c] py-3 font-semibold text-white disabled:opacity-40"
-        >
-          Continuar
-        </button>
-      </Card>
-    </div>
-  );
-}

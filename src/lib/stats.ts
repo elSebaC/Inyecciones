@@ -172,3 +172,34 @@ export function lastDose(injs: Injection[]): string {
   withDose.sort((a, b) => b.injected_at.localeCompare(a.injected_at));
   return formatDose(withDose[0]?.dose_mg ?? null);
 }
+
+// Edad exacta en años, meses y días entre birth y el día de hoy (o `on`).
+export function ageParts(birth: string, on: string = localDay(new Date())) {
+  const [by, bm, bd] = birth.split("-").map(Number);
+  const [ty, tm, td] = on.split("-").map(Number);
+  let years = ty - by;
+  let months = tm - bm;
+  let days = td - bd;
+  if (days < 0) {
+    months--;
+    days += new Date(ty, tm - 1, 0).getDate(); // días del mes anterior
+  }
+  if (months < 0) {
+    years--;
+    months += 12;
+  }
+  return { years, months, days };
+}
+
+export function ageText(birth: string, on?: string): string {
+  const { years, months, days } = ageParts(birth, on);
+  if (years < 0) return "";
+  const p = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+  return `${p(years, "año", "años")}, ${p(months, "mes", "meses")} y ${p(days, "día", "días")}`;
+}
+
+export function bmi(heightCm: number | null, weightKg: number | null): number | null {
+  if (!heightCm || !weightKg) return null;
+  const m = heightCm / 100;
+  return weightKg / (m * m);
+}

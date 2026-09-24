@@ -1,10 +1,12 @@
 -- Esquema de App Vacunas. Ejecutar una vez en Supabase > SQL Editor.
+-- En una base nueva, ejecutar también supabase/migrations/ en orden.
 
 create table if not exists public.children (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null default auth.uid() references auth.users (id) on delete cascade,
   name text not null check (char_length(name) between 1 and 80),
   start_date date,
+  birth_date date,
   created_at timestamptz not null default now()
 );
 
