@@ -1,0 +1,9 @@
+{
+  "name": "Registro de inyecciones",
+  "short_name": "Inyecciones",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#fdf6ef",
+  "theme_color": "#fdf6ef",
+  "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+}

@@ -1,36 +1,27 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# App Vacunas · Registro de inyecciones
 
-## Getting Started
+Web mobile-first para registrar cada día en qué zona del cuerpo se inyectó la hormona de crecimiento, con sugerencia de rotación, historial, mapa de calor y estadísticas.
 
-First, run the development server:
+## Stack
+
+- **Next.js 16 + React 19 + Tailwind 4**, todo en el cliente (sin lógica de servidor), desplegable en Vercel.
+- **Supabase**: login con Google y Postgres. La seguridad la da Row Level Security (`supabase/schema.sql`): cada usuario solo ve sus datos.
+- Al no depender del servidor, el mismo código se puede empaquetar como app Android/iOS con Capacitor (o migrar a Expo reutilizando el mismo backend).
+- **Modo prueba**: sin Supabase configurado (o con "Probar sin cuenta"), los datos se guardan en el navegador.
+
+## Zonas
+
+Abdomen en 4 cuadrantes (superior/inferior, derecho/izquierdo), parte trasera de brazo izq/der, frente de muslo izq/der y nalga izq/der. Definidas en `src/lib/zones.ts`.
+
+## Puesta en marcha
+
+1. Crear un proyecto en [Supabase](https://supabase.com) y ejecutar `supabase/schema.sql` en el SQL Editor.
+2. En Google Cloud Console crear un "OAuth client ID" (tipo Web) con la URI de redirección `https://<proyecto>.supabase.co/auth/v1/callback`.
+3. En Supabase > Authentication > Providers > Google, pegar el Client ID y Secret.
+4. En Supabase > Authentication > URL Configuration, poner la URL de Vercel como Site URL y agregarla (y `http://localhost:3000`) a Redirect URLs.
+5. Copiar `.env.example` a `.env.local` con la URL y la anon key del proyecto, y en Vercel definir las mismas variables.
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
-
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
