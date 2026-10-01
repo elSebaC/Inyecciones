@@ -11,6 +11,7 @@ import StatsTab from "./StatsTab";
 import { Card } from "./ui";
 import { clearDemo, demoStore, supabaseStore, type Store } from "@/lib/store";
 import { getSupabase, supabaseConfigured } from "@/lib/supabase";
+import { isIOS, listenForLoginRedirect, signIn } from "@/lib/native";
 import { ageText } from "@/lib/stats";
 import type { Child, Injection, NewInjection } from "@/lib/types";
 
@@ -83,13 +84,9 @@ function Splash() {
 
 function Login({ onDemo }: { onDemo: () => void }) {
   const [err, setErr] = useState<string | null>(null);
-  const google = async () => {
-    const { error } = await getSupabase().auth.signInWithOAuth({
-      provider: "google",
-      options: { redirectTo: window.location.origin },
-    });
-    if (error) setErr(error.message);
-  };
+  useEffect(() => listenForLoginRedirect(setErr), []);
+  const google = async () => setErr(await signIn("google"));
+  const apple = async () => setErr(await signIn("apple"));
   return (
     <div className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-6 p-6">
       <div className="text-center">
@@ -114,7 +111,19 @@ function Login({ onDemo }: { onDemo: () => void }) {
           </svg>
           Entrar con Google
         </button>
-      ) : (
+      ) : null}
+      {supabaseConfigured && isIOS ? (
+        <button
+          onClick={apple}
+          className="flex items-center justify-center gap-3 rounded-2xl bg-black py-3 font-semibold text-white shadow active:scale-[0.98]"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+            <path d="M16.4 12.6c0-2.5 2-3.7 2.1-3.7-1.2-1.7-3-1.9-3.6-2-1.5-.2-3 .9-3.8.9-.8 0-2-.9-3.3-.8-1.7 0-3.2 1-4.1 2.5-1.8 3-.5 7.6 1.2 10 .8 1.2 1.8 2.6 3.1 2.5 1.2 0 1.7-.8 3.2-.8s1.9.8 3.2.8c1.3 0 2.2-1.2 3-2.4.9-1.4 1.3-2.7 1.3-2.8 0 0-2.4-1-2.3-4.2zM14 5.2c.7-.8 1.1-1.9 1-3-1 0-2.1.7-2.8 1.5-.6.7-1.2 1.8-1 2.9 1 .1 2.1-.6 2.8-1.4z" />
+          </svg>
+          Entrar con Apple
+        </button>
+      ) : null}
+      {supabaseConfigured ? null : (
         <p className="rounded-xl bg-amber-50 p-3 text-center text-sm text-amber-800">
           El inicio de sesión con Google aún no está configurado.
         </p>
@@ -260,6 +269,20 @@ function Main({ store, who, demo, onSignOut }: { store: Store; who: string; demo
             <button className="w-full rounded-lg px-3 py-2 text-left hover:bg-stone-50" onClick={onSignOut}>
               {demo ? "Salir del modo prueba" : "Cerrar sesión"}
             </button>
+            {!demo && (
+              <button
+                className="w-full rounded-lg px-3 py-2 text-left text-red-600 hover:bg-red-50"
+                onClick={async () => {
+                  if (!confirm("¿Borrar tu cuenta y todos sus datos? No se puede deshacer.")) return;
+                  const sb = getSupabase();
+                  const { error } = await sb.rpc("delete_my_account");
+                  if (error) return setError(error.message);
+                  await sb.auth.signOut({ scope: "local" });
+                }}
+              >
+                Borrar mi cuenta
+              </button>
+            )}
           </div>
         </details>
       </header>
