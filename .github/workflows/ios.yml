@@ -43,9 +43,14 @@ jobs:
       - run: npm ci
       - run: npm run build:app
       - name: Guardar la llave de App Store Connect
+        # La llave entra por env y no interpolada en el script: así el shell la trata
+        # como dato y no expande nada de lo que contenga.
+        env:
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
         run: |
           mkdir -p "$RUNNER_TEMP/keys"
-          echo "${{ secrets.ASC_KEY_P8 }}" > "$RUNNER_TEMP/keys/AuthKey.p8"
+          printf '%s\n' "$ASC_KEY_P8" > "$RUNNER_TEMP/keys/AuthKey.p8"
+          chmod 600 "$RUNNER_TEMP/keys/AuthKey.p8"
           echo "KEY_PATH=$RUNNER_TEMP/keys/AuthKey.p8" >> "$GITHUB_ENV"
       - name: Archivar y firmar
         run: >
